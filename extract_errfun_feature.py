@@ -743,6 +743,12 @@ class ExtractErrFunFeatures:
             # 3. 存在未使用检查，继续分析路径信息
             feature_callee = [callee_id, 1]
             all_paths = self.query_farward_paths_from_condition(checkpoint_id)
+            #todo: switch未处理，导致all_paths =  false
+            if not all_paths:
+                feature_callee = [callee_id, 1, [0,0,0],[0,0,0]]
+                feature_func.append(feature_callee)
+                continue
+
             print all_paths
             for path in all_paths:
                 feature_right_path = [0,0,0]
@@ -809,7 +815,9 @@ if __name__ == '__main__':
     #function_name = "pread"
     #function_name = "magic_error"
     #function_name = "file_regcomp"
-    function_name ="snprintf"
+    #function_name ="snprintf"
+    #function_name ="magic_compile"
+    function_name ="parse"
 
     extract_errfun_feature = ExtractErrFunFeatures(function_name)
     #patterns = extract_check_patterns.run(False, callee_ids)

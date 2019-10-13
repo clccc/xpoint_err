@@ -11,6 +11,7 @@ from mining_err_func import MiningErrFunc
 from extract_errfun_feature import ExtractErrFunFeatures
 from database_provider import DBContentsProvider
 from ObjDataAndBinFile import ObjDataAndBinFile
+import time
 
 # sys.path.append("..")
 
@@ -40,6 +41,8 @@ class MiningErrfuncShell:
 
     def run(self):
         allCallee_name = self.query_allCallee_name()
+        display_data = []
+
         for function_name in allCallee_name:
             function_name_str = function_name.encode('gbk')
             extract_errfun_feature = ExtractErrFunFeatures(function_name_str)
@@ -47,10 +50,22 @@ class MiningErrfuncShell:
             feature_callees = extract_errfun_feature.run(flag_thread=False)
 
             obj_MiningErrFunc = MiningErrFunc(feature_callees)
-
+            #mining_result = [is_err, weight_call, ratio_ft_path,ratio_ft_stmt,ratio_ft_usedOneside]
             mining_result = obj_MiningErrFunc.run()
-            print "%s: "%function_name_str
-            print mining_result
+            tmp = []
+            tmp.append(function_name)
+            tmp.extend(mining_result)
+            display_data.append(tmp)
+
+        display_data = sorted(display_data, key=lambda l: l[1], reverse=True)
+        # 保存数据
+        f= open("Data/10140628.data",'w' )
+        #f= open("Data/%s.data"%int(time.time),'w' )
+        for data in display_data:
+            f.write(data[0] + ": " + data[1] + "  " +  data[2]
+                    + "  " +  data[3]+ "  " +  data[4] + data[5])
+            f.write("\n")
+        f.close()
         return
 
 

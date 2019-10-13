@@ -24,9 +24,11 @@ Object.metaClass._getReturnVarOfCalleeId = { calleeid ->
         expstmt_id = g.v(cfgid).outE("IS_AST_PARENT").inV.id.toList()[0]
         if(g.v(expstmt_id).type == "AssignmentExpr")
         {
-            returnVar_id = g.v(expstmt_id).outE("IS_AST_PARENT").inV.has('childNum',"0").id
+            println "expstmt_id = " + expstmt_id
+            returnVar_id = g.v(expstmt_id).outE("IS_AST_PARENT").inV.has('childNum',"0").id.toList()[0]
         }
     }
+    println "returnVar_id = " + returnVar_id
     if(returnVar_id == 0)
         return false
     if(g.v(returnVar_id).type == "Identifier")

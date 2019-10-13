@@ -7,7 +7,11 @@ Object.metaClass.getFarwardPaths_from_condition = { condition_id ->
     MAX_PATHS = 100  // the max number of paths allowed to search
     cnd_true_id = g.v(condition_id).outE("FLOWS_TO").has('flowLabel','True').inV.id.toList()
     cnd_false_id = g.v(condition_id).outE("FLOWS_TO").has('flowLabel','False').inV.id.toList()
-
+    //todo： 当condition在switch中的情况
+    if(cnd_true_id.size() == 0)
+        return false
+    if(cnd_false_id.size() == 0)
+        return false
     println "(2)cnd_true_id,cnd_flase_id" + cnd_true_id[0] + ',' + cnd_false_id[0]
     true_path = []
     false_path = []
@@ -28,8 +32,9 @@ Object.metaClass.getFarwardPaths = { cfgid ->
     allpaths = []     // all complete paths have been searched
     while (paths.size() != 0)
     {
-         println "paths.size() = " + paths.size()
-         println "allpaths.size() = " + allpaths.size()
+        println "loop.(1)"
+        println "paths.size() = " + paths.size()
+        println "allpaths.size() = " + allpaths.size()
 
         newpaths = genNewPaths_farward(paths, MAX_PATHS)
         println "newpaths = " + newpaths
@@ -57,18 +62,22 @@ Object.metaClass.getFarwardPaths = { cfgid ->
 
 //沿着当前位置向后搜索新的节点，属于广度优先遍历
 Object.metaClass.genNewPaths_farward = { paths, MAX_PATHS ->
+    println "\n###genNewPaths_farward"
     def newpaths = []
     for(xpath in paths){
+        println "loop(1)" + xpath.size()
         lastid = xpath[xpath.size()-1]
         newids = g.v(lastid).outE('label','FLOWS_TO').inV.id.toList()
         for(xid in newids){
             //if count(xid) >= 2, the xpath has looped 2 times, it must be deleted,and remove this loop path
+            println "loop(2) xid = " + xid
             counts = countIDs(xpath,xid)
             if (counts >=2){
                 flag_invalid = true
                 continue
             }
             if (newpaths.size() >= MAX_PATHS){
+                println "loop(3) newpaths.size() >= MAX_PATHS "
                 break;
             }
             new_path = xpath.plus(xid)
