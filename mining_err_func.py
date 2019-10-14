@@ -16,8 +16,9 @@ class MiningErrFunc:
     def __init__(self, calee_featureList):
         self.calee_featureList = calee_featureList
         #关于路径数量，语句数量“明显差异”的阈值，比例 > thld_path_ratio
-        self.thld_path_ratio = 2
-        self.thld_stmt_ratio = 2
+        tmp_test = 2
+        self.thld_path_ratio = tmp_test
+        self.thld_stmt_ratio = tmp_test
         #关于特征是否满足的阈值
         self.thld_is_check = 0.8
         self.thld_is_path = 0.8

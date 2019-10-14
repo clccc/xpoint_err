@@ -73,7 +73,7 @@ class MiningErrfuncShell:
             display_data.append(tmp)
             num_alalysed_func = num_alalysed_func +1
             f_debug= open("Data/degbug.txt",'a' )
-            f_debug.write(str(tmp[1]) + str(" ") + str(tmp[2]) + "  " +  str(tmp[0])
+            f_debug.write(str(tmp[1]) + str("  ") + str(tmp[2]) + "  " +  str(tmp[0])
                             + "  " +  str(tmp[3])+ "  " +  str(tmp[4])+ " "  + str(tmp[5]))
             f_debug.write("\n")
             f_debug.close()
@@ -86,10 +86,26 @@ class MiningErrfuncShell:
         f= open("Data/10141859.txt",'w' )
         #f= open("Data/%s.data"%int(time.time),'w' )
         for data in display_data:
-            f.write(str(data[0]) + str(": ") + str(data[1]) + "  " +  str(data[2])
+            f.write(str(data[0]) + str("  ") + str(data[1]) + "  " +  str(data[2])
                     + "  " +  str(data[3])+ "  " +  str(data[4]) + " " + str(data[5]))
             f.write("\n")
         f.close()
+
+
+        ##缺陷检测部分
+        num_detect = 50
+        for func_item in display_data:
+            function_name_str = func_item[0].encode('gbk')
+            extract_errfun_feature = ExtractErrFunFeatures(function_name_str)
+            #patterns = extract_check_patterns.run(False, callee_ids)
+            feature_callees = extract_errfun_feature.run(flag_thread=False)
+            for ft_callee in feature_callees:
+                ft_info = "%s %s %s %s %s %s %s %s"%(func_item[0],ft_callee[0],ft_callee[2][0],ft_callee[2][1],
+                            ft_callee[2][2],ft_callee[3][0], ft_callee[3][1],ft_callee[3][2])
+                f_dectect= open("Data/detect.txt",'a' )
+                f_dectect.write(ft_info)
+                f_dectect.write("\n")
+        ##
         return
 
 
