@@ -817,7 +817,8 @@ if __name__ == '__main__':
     #function_name = "file_regcomp"
     #function_name ="snprintf"
     #function_name ="magic_compile"
-    function_name ="parse"
+    #function_name ="parse"
+    function_name = INCOHERENT()
 
     extract_errfun_feature = ExtractErrFunFeatures(function_name)
     #patterns = extract_check_patterns.run(False, callee_ids)

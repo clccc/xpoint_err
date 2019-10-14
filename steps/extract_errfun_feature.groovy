@@ -4,7 +4,7 @@ Object.metaClass._getReturnVarOfCalleeId = { calleeid ->
     MAX_PATHS = 100  // the max number of paths allowed to search
     cfgid = g.v(calleeid)._().statements().id.toList().toList()[0]
     calleesite_ids = g.v(calleeid).in.in.id.toList()
-    println calleesite_ids
+    println "calleesite_ids = " + calleesite_ids
     calleesite_id = calleesite_ids[0]
     if(g.v(cfgid).isCFGNode != "True")
     {

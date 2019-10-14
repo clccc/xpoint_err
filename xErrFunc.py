@@ -11,7 +11,7 @@ from mining_err_func import MiningErrFunc
 from extract_errfun_feature import ExtractErrFunFeatures
 from database_provider import DBContentsProvider
 from ObjDataAndBinFile import ObjDataAndBinFile
-import time
+import datetime
 
 # sys.path.append("..")
 
@@ -40,10 +40,18 @@ class MiningErrfuncShell:
         return result
 
     def run(self):
+        #一些奇怪的，暂时无法消除bug（与joern实现有关）的函数，略过
+        func_unnormal = ['INCOHERENT']
         allCallee_name = self.query_allCallee_name()
         display_data = []
-
+        num_func = len(allCallee_name)
+        num_alalysed_func = 0
+        f_debug= open("Data/degbug.txt",'a' )
+        f_debug.write("BeginTime = %s   num_func = %s\n"%(datetime.datetime.now(),num_func))
+        f_debug.close
         for function_name in allCallee_name:
+            if function_name in func_unnormal:
+                continue
             function_name_str = function_name.encode('gbk')
             extract_errfun_feature = ExtractErrFunFeatures(function_name_str)
             #patterns = extract_check_patterns.run(False, callee_ids)
@@ -56,14 +64,23 @@ class MiningErrfuncShell:
             tmp.append(function_name)
             tmp.extend(mining_result)
             display_data.append(tmp)
+            num_alalysed_func = num_alalysed_func +1
+            f_debug= open("Data/degbug.txt",'a' )
+            f_debug.write(str(tmp[1]) + str(" ") + str(tmp[2]) + "  " +  str(tmp[0])
+                                  + "  " +  str(tmp[3])+ "  " +  str(tmp[4])+ str(tmp[5]))
+            f_debug.write("\n")
+            f_debug.close()
+        f_debug= open("Data/degbug.txt",'a' )
+        f_debug.write("EndTime = %s   num_alalysed_func = %s\n"%(datetime.datetime.now(),num_alalysed_func))
+        f_debug.close()
 
         display_data = sorted(display_data, key=lambda l: l[1], reverse=True)
         # 保存数据
-        f= open("Data/10140628.data",'w' )
+        f= open("Data/10141001.txt",'w' )
         #f= open("Data/%s.data"%int(time.time),'w' )
         for data in display_data:
-            f.write(data[0] + ": " + data[1] + "  " +  data[2]
-                    + "  " +  data[3]+ "  " +  data[4] + data[5])
+            f.write(str(data[0]) + str(": ") + str(data[1]) + "  " +  str(data[2])
+                          + "  " +  str(data[3])+ "  " +  str(data[4])+ str(data[5]))
             f.write("\n")
         f.close()
         return
