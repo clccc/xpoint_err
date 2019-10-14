@@ -146,8 +146,8 @@ if __name__ == '__main__':
     filename = "Data/malloc.data"
     #filename = "Data/42153.data"
     featureList = ObjDataAndBinFile.binfile2objdata(filename)
-    identify = MiningErrFunc(featureList)
-    entropy = identify.run()
+    obj_MiningErrFunc = MiningErrFunc(featureList)
+    featurecallee = obj_MiningErrFunc.run()
 
     #d = DisplayEntropyInfo(entropy)
     #d.display_entropy()
