@@ -92,8 +92,9 @@ class MiningErrfuncShell:
         f.close()
 
 
-        ##缺陷检测部分
+        ##debug：缺陷检测部分,检测前面num_detect个fun
         num_detect = 50
+        index = 0
         for func_item in display_data:
             function_name_str = func_item[0].encode('gbk')
             extract_errfun_feature = ExtractErrFunFeatures(function_name_str)
@@ -105,6 +106,9 @@ class MiningErrfuncShell:
                 f_dectect= open("Data/detect.txt",'a' )
                 f_dectect.write(ft_info)
                 f_dectect.write("\n")
+            index =index +1
+            if index > num_func:
+                break
         ##
         return
 

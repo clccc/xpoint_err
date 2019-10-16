@@ -1,0 +1,22 @@
+feature_func =：
+/mnt/win-e/sourcecode/linux-5.2/drivers/acpi/ec.c: 2039:2:55995:56067:
+[316641, 1, [1, 2, 0], [1, 2, 0]]
+/mnt/win-e/sourcecode/linux-5.2/drivers/acpi/osl.c: 1726:1:40464:40519:
+[361673, 0, [0, 0, 0], [0, 0, 0]]
+/mnt/win-e/sourcecode/linux-5.2/drivers/acpi/osl.c: 1725:1:40418:40461:
+[361686, 0, [0, 0, 0], [0, 0, 0]]
+/mnt/win-e/sourcecode/linux-5.2/drivers/acpi/thermal.c: 1249:1:31602:31698:
+[447136, 1, [1, 2, 0], [2, 9, 1]]
+/mnt/win-e/sourcecode/linux-5.2/drivers/ata/libata-sff.c: 3264:1:83837:83907:
+[623516, 1, [1, 2, 0], [1, 2, 0]]
+/mnt/win-e/sourcecode/linux-5.2/drivers/block/nbd.c: 2231:1:56470:56572:
+[1451554, 1, [1, 2, 0], [4, 31, 1]]
+/mnt/win-e/sourcecode/linux-5.2/drivers/block/rbd.c: 6317:1:162490:162547:
+[1567571, 1, [1, 6, 0], [9, 97, 1]]
+
+Begin time: 2019-10-16 12:14:20.863378
+[1, 0, 0.65, 0.7, 0.4]
+
+End: 2019-10-16 12:14:20.883451
+
+Time Used: 0:00:00.020073

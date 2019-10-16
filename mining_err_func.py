@@ -144,7 +144,7 @@ if __name__ == '__main__':
     print MiningErrFunc.calculate_entropy([1], 2)
     """
 
-    filename = "Data/malloc.data"
+    filename = "Data/alloc_workqueue.data"
     #filename = "Data/42153.data"
     featureList = ObjDataAndBinFile.binfile2objdata(filename)
     obj_MiningErrFunc = MiningErrFunc(featureList)

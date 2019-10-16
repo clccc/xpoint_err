@@ -1,0 +1,32 @@
+feature_func =：
+/mnt/win-e/sourcecode/linux-5.2/drivers/net/wireless/marvell/libertas/if_sdio.c: 1181:1:26507:26576:
+[33528, 0, [0, 0, 0], [0, 0, 0]]
+/mnt/win-e/sourcecode/linux-5.2/drivers/net/wireless/marvell/libertas/if_spi.c: 1157:1:28402:28470:
+[39242, 1, [2, 23, 1], [5, 87, 1]]
+/mnt/win-e/sourcecode/linux-5.2/drivers/net/wireless/marvell/libertas_tf/main.c: 708:1:18248:18306:
+[70118, 1, [1, 8, 0], [1, 3, 0]]
+/mnt/win-e/sourcecode/linux-5.2/drivers/net/wireless/marvell/mwifiex/cfg80211.c: 3076:1:86381:86523:
+[98059, 1, [1, 17, 1], [7, 91, 1]]
+/mnt/win-e/sourcecode/linux-5.2/drivers/net/wireless/marvell/mwifiex/cfg80211.c: 3064:1:86032:86169:
+[98120, 1, [1, 14, 1], [8, 132, 1]]
+/mnt/win-e/sourcecode/linux-5.2/drivers/net/wireless/marvell/mwifiex/main.c: 1520:2:43289:43419:
+[145722, 1, [2, 21, 1], [6, 88, 1]]
+/mnt/win-e/sourcecode/linux-5.2/drivers/net/wireless/marvell/mwifiex/main.c: 1511:1:43037:43146:
+[145767, 1, [2, 21, 1], [14, 235, 1]]
+/mnt/win-e/sourcecode/linux-5.2/drivers/net/wireless/marvell/mwifiex/main.c: 1675:2:47612:47742:
+[146435, 1, [2, 15, 1], [13, 233, 1]]
+/mnt/win-e/sourcecode/linux-5.2/drivers/net/wireless/marvell/mwifiex/main.c: 1666:1:47360:47469:
+[146480, 1, [2, 15, 1], [28, 554, 1]]
+
+Time Used: 0:00:03.964952 (2019-10-16 00:36:09.910462 ~ 2019-10-16 00:36:13.875414)
+
+
+------------------
+ft_call=
+
+Begin time: 2019-10-16 00:37:59.406464
+[1, 0.5, 0.78, 0.89, 0.0]
+
+End: 2019-10-16 00:37:59.406692
+
+Time Used: 0:00:00.000228
