@@ -1,19 +1,19 @@
 # coding:utf-8
 # -----------------------------
-# coded by cl in 2019-01-02
-# use the information entropy to measure the difference between the callee's constraint
-# and the other callees' constraints, and consider these callees whose measurement are bigger than a threshold value.
-# the measure progress will be calculated on every argument, and the sum of all arguments'entropy is the callee's
-# entropy. the argument' entropy is the average entropy of each pairs of the target callee with other callees.
+# 编码作者：cl
+# 更新时间：2019-12-05
+# 模块功能：异常行为判定，即引入信息熵判定异常的行为向量。
 # -----------------------------
 
 import math
 from ObjDataAndBinFile import ObjDataAndBinFile
 from display_data import DisplayEntropyInfo
+from database_provider import DBContentsProvider
 
 class MiningErrFunc:
 
     def __init__(self, calee_featureList):
+        self.db_provider = DBContentsProvider()
         self.calee_featureList = calee_featureList
         #关于路径数量，语句数量“明显差异”的阈值，比例 > thld_path_ratio
         tmp_test = 2
@@ -29,6 +29,16 @@ class MiningErrFunc:
         self.weight_stmt = 0.5
         self.weight_useOneSide = 1
 
+    def run_gremlin_query(self, query):
+        return self.db_provider.run_gremlin_query(query)
+
+    def query_loc_callsite(self, callee_id):
+        query = """
+            g.v(%s).statements.transform{[g.v(it.functionId).functionToFile.filepath, it.location]}
+            """ % callee_id
+        result = self.run_gremlin_query(query)
+        loc = "%s: %s" % (result[0][0][0], result[0][1])
+        return loc
     # feature_callee = [    callee_id, 未使用前检查（0,1）,
     #                       [正确路径的路径数量,正确路径的语句数量，错误路径中使用返回值变量(1,0)],
     #                       [错误路径的路径数量,正确路径的语句数量，错误路径中使用了返回值变量(1,0)]
@@ -118,7 +128,17 @@ class MiningErrFunc:
         ft_call = self.get_featrue(self.calee_featureList)
         mining_result = self.mining_err(ft_call)
         # 打印挖掘结果
-        print mining_result
+        f = open("Data/result.txt","w")
+        print >> f, "ft_call = "
+        print >> f,mining_result
+        for i in range(0,len(ft_call)):
+            loc = self.query_loc_callsite(self.calee_featureList[i][0])
+            print >> f, "%s:"%(loc)
+            print loc
+            print >> f,self.calee_featureList[i]
+            print self.calee_featureList[i]
+            print >> f,ft_call[i]
+
         return mining_result
 
     """

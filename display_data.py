@@ -1,13 +1,12 @@
 # coding:utf-8
 # -----------------------------
-# code by cl in 2019-01-02
-# use Joern to extract raw explict-check and implicit-check of every callee, which is call instance of
-# the argument-sensitive function @function_name interested
+# 编码作者：cl
+# 更新时间：2019-12-05
+# 模块功能：显示各个实例的行为向量的信息熵及其相关信息。
 # -----------------------------
 
 from database_provider import DBContentsProvider
 from ObjDataAndBinFile import ObjDataAndBinFile
-
 
 class DisplayEntropyInfo:
     def __init__(self, entropy):

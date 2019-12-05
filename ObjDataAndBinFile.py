@@ -1,12 +1,11 @@
 # coding:utf-8
 # ---------------------------
-# code by Chen Lin 2016-03-26
-# uses pickle to save struct data to a file or load stract data from a file
+# 编码作者：cl
+# 更新时间：2019-12-05
+# 模块功能：使用pickle包将结构化数据存入文件或者从文件中读取出结构化数据
 # ---------------------------
 
-
 import pickle
-
 
 class ObjDataAndBinFile:
 

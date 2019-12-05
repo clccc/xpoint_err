@@ -1,8 +1,8 @@
 # coding:utf-8
 # -----------------------------
-# code by cl in 2019-01-02
-# use Joern to extract raw explict-check and implicit-check of every callee, which is call instance of
-# the argument-sensitive function @function_name interested
+# 编码作者：cl
+# 更新时间：2019-12-05
+# 模块功能：提取某函数各个调用实例的特征，构建行为向量
 # -----------------------------
 
 from threading import Thread
@@ -818,7 +818,7 @@ if __name__ == '__main__':
     #function_name ="snpri
     #function_name ="magic_compile"
     #function_name ="parse"
-    function_name = "alloc_workqueue"
+    #function_name = "alloc_workqueue"
     extract_errfun_feature = ExtractErrFunFeatures(function_name)
     #patterns = extract_check_patterns.run(False, callee_ids)
     patterns = extract_errfun_feature.run(flag_thread=False)

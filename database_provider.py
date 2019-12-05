@@ -1,6 +1,7 @@
 # ---------------------------
-# code by cl 2016-03-26
-# uses pickle to save struct data to a file or load struct data from a file
+# 编码作者：cl
+# 更新时间：2019-12-05
+# 模块功能：为了调用便捷，封装Joern0.3.1中代码数据库链接功能，设定网络连接时限。
 # ---------------------------
 # coding:utf-8
 
