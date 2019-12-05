@@ -2,7 +2,7 @@
 # -----------------------------
 # 编码作者：cl
 # 更新时间：2019-12-05
-# 模块功能：提取某函数各个调用实例的特征，构建行为向量
+# 模块功能：提取某函数各个调用实例的安全特征和辅助特征
 # -----------------------------
 
 from threading import Thread
@@ -16,42 +16,6 @@ class ExtractErrFunFeatures:
         self.file_io_provider = ObjDataAndBinFile()
         self.function_name = function_name
         self.count_threads = 20
-
-    def set_implicit_check_pattern(self, arg_checked, arg_by):
-        # CNT is constant, OutVar is variable from outside of caller
-        if arg_by == "CNT":
-            return "arg_%s DEFBY %s" % (arg_checked, arg_by)
-        if arg_by == "OutVar":
-            return "arg_%s DEFBY %s" % (arg_checked, arg_by)
-        return "arg_%s DEFBY arg_%s" % (arg_checked, arg_by)
-    '''
-    def set_explicit_check_pattern(self, arg_checked, checkinfo):
-
-        flowlabel_code = checkinfo[0][0]
-        operator_code = checkinfo[1]
-        related_args = checkinfo[2]
-        pattern_str = "%s %s arg_%s VS (" % (arg_checked, flowlabel_code, operator_code)
-        for arg_index in related_args:
-            pattern_str += " arg_%s " % arg_index
-        pattern_str += ")"
-        return
-    '''
-
-    def set_explicit_check_pattern(self, arg_checked, checkinfo):
-        # explicit_checkinfo_args[index_arg].append([norm_cmp_items, norm_cmp_op, norm_cmp_value])
-        norm_cmp_items = "f("
-        for i in range(0, len(checkinfo[0])-1):
-            norm_cmp_items += "arg_%d, " % checkinfo[0][i]
-        norm_cmp_items += "arg_%d)" % checkinfo[0][len(checkinfo[0])-1]
-
-        norm_cmp_op = checkinfo[1]
-
-        norm_cmp_value = "f("
-        for i in range(0, len(checkinfo[2]) - 1):
-            norm_cmp_value += "%s, " % checkinfo[2][i]
-        norm_cmp_value += "%s)" % checkinfo[2][len(checkinfo[2])-1]
-
-        return "%s %s %s" % (norm_cmp_items, norm_cmp_op, norm_cmp_value)
 
     def run_gremlin_query(self, query):
         return self.db_provider.run_gremlin_query(query)
@@ -130,13 +94,6 @@ class ExtractErrFunFeatures:
         for i in invalid_chains:
             def_chain.remove(def_chain[i])
         return def_chain
-
-    def query_args(self, callee_id):
-        query = """
-        getArgs(%s)
-        """ % callee_id
-        arg_ids = self.run_gremlin_query(query)
-        return arg_ids
 
     def query_symbols_by_ids(self, ids):
         symbols_id = []
@@ -290,381 +247,6 @@ class ExtractErrFunFeatures:
         else:
             return 'x'
 
-    def query_check_patterns_path(self, callee_id, callsite_id, path, controls_path):
-        arg_ids = self.query_args(callee_id)
-        symbols_id_of_args, symbols_code_of_args = self.query_symbols_by_ids(arg_ids)
-        def_chain_path = self.query_define_chains(path)
-        define_vars_of_args = []
-        define_dst_of_args = []
-        for symbols_arg in symbols_id_of_args:
-            defvars_of_arg, define_dst_of_arg = \
-                self.query_define_vars_dst_on_symbols(callsite_id, symbols_arg, def_chain_path)
-            define_vars_of_args.append(defvars_of_arg)
-            define_dst_of_args.append(define_dst_of_arg)
-
-        arg_num = len(arg_ids)
-
-        # I. 隐式约束 query_implicit_check_patterns_path
-        implicit_check_patterns = [[] for i in range(arg_num)]
-
-        for i in range(0, arg_num):
-            # 1. 判断该参数是否为常量
-            #   1.1 没有用到符号
-            if not symbols_id_of_args[i]:
-                implicit_check_patterns[i].append(self.set_implicit_check_pattern(i, "CNT"))
-                continue
-
-            # Because Joern can not identify the Global variable/const,
-            # the arg may have symbol but its define_vars_of_args is NULL.
-            # Because the global variable is not recommend, used rarely,
-            # so we set its check pattern as defined by const  "CNT"
-            # const: type 'PrimaryExpression'
-            #   1.2 有符号没却没有用于定义的变量 and 符号代码全为大写字符，则判断为全局变量，Joern不精准的原因
-            if symbols_id_of_args[i] and (not define_vars_of_args[i]):
-                flag_notupper = False
-                for symbol in symbols_code_of_args[i]:
-                    if not symbol.isupper():
-                        flag_notupper = True
-                        break
-                if not flag_notupper:
-                    implicit_check_patterns[i].append(self.set_implicit_check_pattern(i, "CNT"))
-                    continue
-
-            # If the right values of all the define nodes of the define chains' tails (define_dst_of_args[i]) are constants,
-            # the arg is defined by constant
-            #   1.3. 所有的定义语句都是常量赋值，那么最终的实参也是常量
-            flag_value = True
-            if define_dst_of_args[i]:
-                for nodeid in define_dst_of_args[i]:
-                    nodecode = self.run_gremlin_query("g.v(%s).code" % nodeid)
-                    value = nodecode.split("=", 1)
-                    if len(value) != 2:
-                        flag_value = False
-                        break
-                    rightvalue = value[1]
-                    # 此处有错误，如果是字符串常量呢？
-                    if rightvalue.isdigit() != True:
-                        flag_value = False
-                        break
-                if flag_value:
-                    implicit_check_patterns[i].append(self.set_implicit_check_pattern(i, "CNT"))
-                    continue
-            for j in range(i + 1, arg_num):
-                # 2. 判断与其它参数的关系
-                #   2.1. symbols属于包含关系
-                if self.list1_VSset_list2(symbols_id_of_args[i], symbols_id_of_args[j]) == '>':
-                    implicit_check_patterns[i].append(self.set_implicit_check_pattern(i, j))
-                    continue
-                #if self.is_lists_cross(symbols_id_of_args[i], symbols_id_of_args[j]):
-                #    implicit_check_patterns[i].append(self.set_implicit_check_pattern(i, j))
-                if self.list1_VSset_list2(symbols_id_of_args[i], symbols_id_of_args[j]) == '<':
-                    implicit_check_patterns[j].append(self.set_implicit_check_pattern(j, i))
-                    continue
-                if self.list1_VSset_list2(symbols_id_of_args[i], symbols_id_of_args[j]) == '=':
-                    implicit_check_patterns[i].append(self.set_implicit_check_pattern(i, j))
-                    implicit_check_patterns[j].append(self.set_implicit_check_pattern(j, i))
-                    continue
-
-                #   2.2. var包含关系
-                if self.list1_VSset_list2(define_vars_of_args[i], symbols_code_of_args[j]) == '>':
-                    implicit_check_patterns[i].append(self.set_implicit_check_pattern(i, j))
-                    continue
-                if self.list1_VSset_list2(define_vars_of_args[j], symbols_code_of_args[i]) == '>':
-                    implicit_check_patterns[i].append(self.set_implicit_check_pattern(j, i))
-                    continue
-
-                tmp_defvar_i = define_vars_of_args[i][1:len(define_vars_of_args[i])]
-                tmp_defvar_j = define_vars_of_args[j][1:len(define_vars_of_args[j])]
-                if tmp_defvar_j:
-                    if self.list1_VSset_list2(define_vars_of_args[i], tmp_defvar_j) == '>':
-                        implicit_check_patterns[i].append(self.set_implicit_check_pattern(i, j))
-                        continue
-                if tmp_defvar_i:
-                    if self.list1_VSset_list2(define_vars_of_args[j], tmp_defvar_i) == '>':
-                        implicit_check_patterns[i].append(self.set_implicit_check_pattern(j, i))
-                        continue
-                if tmp_defvar_i and tmp_defvar_j:
-                    if self.list1_VSset_list2(tmp_defvar_j, tmp_defvar_i) == '=':
-                        implicit_check_patterns[i].append(self.set_implicit_check_pattern(i, j))
-                        implicit_check_patterns[i].append(self.set_implicit_check_pattern(j, i))
-                        continue
-
-                #   2.3. 混合定义的情况
-                if self.is_lists_cross(define_vars_of_args[i], define_vars_of_args[j]):
-                    implicit_check_patterns[i].append(self.set_implicit_check_pattern(i, j))
-                    implicit_check_patterns[i].append(self.set_implicit_check_pattern(j, i))
-                    # implicit_check_patterns[j].append(self.set_implicit_check_pattern(j, i))
-                    continue
-
-                # 3. 其它归为未知变量：后续过程间分析时需要区分是否依赖于调用者的入参
-                # the default define patten is defined by "OutVar"
-
-                # implicit_check_patterns[i].append(self.set_implicit_check_pattern(i, "OutVar"))
-
-
-        # II. 显式约束 query_explicit_check_patterns_path:
-        # If there is a define node on one symbol of the @arg, whose location is between the control node @control
-        # and the callsite, then the @control is not take an explicit check on the @arg.
-        # Else if the defvar(@control) ^ defvar(@arg) != [], then @control is take an explicit check on the @arg.
-        explicit_check_patterns = [[] for i in range(arg_num)]
-        explicit_checkinfo_args = [[] for i in range(arg_num)]
-        checked_arg_control = []
-        symbols_id_of_controls, symbols_code_of_controls = self.query_symbols_by_ids(controls_path)
-        '''
-        define_vars_of_controls = []
-        define_dst_of_controls = []
-        for symbols_control in symbols_id_of_controls:
-            defvars_of_control, define_dst_of_control = \
-                self.query_define_vars_dst_on_symbols(callsite_id, symbols_control, def_chain_path)
-            define_vars_of_controls.append(defvars_of_control)
-            define_dst_of_controls.append(define_dst_of_control)
-        '''
-        # 1. 筛选有效的条件检查，并与对应的参数关联
-        for index_arg in range(0, arg_num):
-            for index_control in range(0, len(controls_path)):
-                checked_var_of_args = self.get_index_same_items_of_list1(define_vars_of_args[index_arg],
-                                                                         symbols_code_of_controls[index_control])
-                location_control = path.index(controls_path[index_control])
-                if checked_var_of_args:
-                    flag_valid_control = True
-                    for index_checked_var_of_args in checked_var_of_args:
-                        location_checked_dst_node = path.index(define_dst_of_args[index_arg][index_checked_var_of_args])
-                        # if one control check on var, but the var was defined again after the control,
-                        # then the control is not consided as a valid check on var
-                        if location_control > location_checked_dst_node:
-                            flag_valid_control = False
-                            break
-                    if flag_valid_control:
-                        # log the relation between arg and valid controls
-                        checked_arg_control.append([index_arg, index_control])
-
-        # 2.解析有效的条件检查；收集条件检查的 逻辑运算符号，结果满足条件（True，False），相关参数
-        # collect check info from @checked_arg_control into each arg
-        for c_arg_control in checked_arg_control:
-            index_arg = c_arg_control[0]
-            index_control = c_arg_control[1]
-
-            args_by_control = []
-            for tmp_arg_control in checked_arg_control:
-                if tmp_arg_control[1] == index_control:
-                    if tmp_arg_control[0] != index_arg:
-                        args_by_control.append(tmp_arg_control[0])
-            args_by_control = self.unique_list(args_by_control)
-            args_by_control.sort()
-
-            # [flowlabel_code, ids_child[0], tpye_code, operator_code, children]
-            # children = [id,type,code]
-            index_next_node = path.index(controls_path[index_control]) - 1
-            flowlabel_code, id_exp, type_exp, operator_expr, children_expr = \
-                self.query_parsed_control(controls_path[index_control], path[index_next_node])
-            norm_cmp_items = []
-            norm_cmp_op = ""
-            norm_cmp_value = []
-
-            if type_exp == "Identifier":
-                if flowlabel_code == "True":
-                    norm_cmp_value.append("notNULL")
-                    norm_cmp_op = "=="
-                else:
-                    norm_cmp_value.append("NULL")
-                    norm_cmp_op = "=="
-                norm_cmp_items = [index_arg]
-                explicit_checkinfo_args[index_arg].append([norm_cmp_items,norm_cmp_op,norm_cmp_value])
-                continue
-            # op = !
-            elif type_exp == "UnaryOp":
-                if flowlabel_code == "True":
-                    norm_cmp_value.append("NULL")
-                else:
-                    norm_cmp_value.append("notNULL")
-                norm_cmp_op = "=="
-                norm_cmp_items = [index_arg]
-                explicit_checkinfo_args[index_arg].append([norm_cmp_items, norm_cmp_op, norm_cmp_value])
-                continue
-
-            elif type_exp == "EqualityExpression":
-                if flowlabel_code == "True":
-                    norm_cmp_op = operator_expr
-                else:
-                    if operator_expr == "==":
-                        norm_cmp_op = "!="
-                    else:
-                        norm_cmp_op = "=="
-                norm_cmp_items, norm_cmp_value = self.analysis_EqualityExpression(
-                    args_by_control, define_vars_of_args,index_arg, children_expr)
-                explicit_checkinfo_args[index_arg].append([norm_cmp_items, norm_cmp_op, norm_cmp_value])
-
-            elif type_exp == "RelationalExpression":
-                norm_cmp_items, norm_cmp_value, flag_left_value = self.analysis_RelationalExpression(
-                    args_by_control, define_vars_of_args, index_arg, children_expr)
-                if flag_left_value:
-                    if flowlabel_code == "True":
-                        norm_cmp_op = operator_expr
-                    else:
-                        if operator_expr == ">": norm_cmp_op = "<"
-                        elif operator_expr == ">=": norm_cmp_op = "<="
-                        elif operator_expr == "<": norm_cmp_op = ">"
-                        elif operator_expr == "<=": norm_cmp_op = ">="
-                        else:
-                            norm_cmp_op = "unknow %s" % operator_expr
-                if not flag_left_value:
-                    if flowlabel_code == "False":
-                        norm_cmp_op = operator_expr
-                    else:
-                        if operator_expr == ">":
-                            norm_cmp_op = "<"
-                        elif operator_expr == ">=":
-                            norm_cmp_op = "<="
-                        elif operator_expr == "<":
-                            norm_cmp_op = ">"
-                        elif operator_expr == "<=":
-                            norm_cmp_op = ">="
-                        else:
-                            norm_cmp_op = "unknow %s" % operator_expr
-                explicit_checkinfo_args[index_arg].append([norm_cmp_items, norm_cmp_op, norm_cmp_value])
-                continue
-
-            else:
-                print "error:unknown type of expression: %s" % type_exp
-
-
-        for index_arg in range(0, arg_num):
-            for checkinfo in explicit_checkinfo_args[index_arg]:
-                if not checkinfo[2]:
-                    print "error:explicit_checkinfo_args"
-                explicit_check_patterns[index_arg].append(
-                    self.set_explicit_check_pattern(arg_checked=index_arg, checkinfo=checkinfo))
-
-        # 去重
-        for i in range(0, len(implicit_check_patterns)):
-            implicit_check_patterns[i] = self.unique_list(implicit_check_patterns[i])
-        for i in range(0, len(explicit_check_patterns)):
-            explicit_check_patterns[i] = self.unique_list(explicit_check_patterns[i])
-
-        return implicit_check_patterns, explicit_check_patterns
-
-    def analysis_EqualityExpression(self, args_by_control, define_vars_of_args, index_arg, children_expr):
-        norm_cmp_items = []
-        norm_cmp_value = []
-
-        # child = [id, type, code]
-        flag_xchild_find = False
-        xchild_id = -1
-        for i in range(0, len(children_expr)):
-            child = children_expr[i]
-            # find which child contains the vars of the checked arg
-            if not flag_xchild_find:
-                for symbol in define_vars_of_args[index_arg]:
-                    if symbol in child[2]:
-                        flag_xchild_find = True
-                        xchild_id = child[0]
-                        norm_cmp_items.append(index_arg)
-                        break
-            # 判断该index_arg相关的child是否包括那些参数的符号变量，放入norm_cmp_items
-            if child[0] == xchild_id:
-                for relate_arg in args_by_control:
-                    for symbol_rarg in define_vars_of_args[relate_arg]:
-                        if symbol_rarg in child[2]:
-                            norm_cmp_items.append(relate_arg)
-                            break
-
-            # 判断该非index_arg相关的child是否包括那些参数的符号变量，放入norm_cmp_value
-            if child[0] != xchild_id:
-                r_args = []
-                for symbol in define_vars_of_args[index_arg]:
-                    if symbol in child[2]:
-                        r_args.append(index_arg)
-                        #norm_cmp_value.append("arg_%d" % index_arg)
-                        break
-                for relate_arg in args_by_control:
-                    for symbol_rarg in define_vars_of_args[relate_arg]:
-                        if symbol_rarg in child[2]:
-                            r_args.append(relate_arg)
-                            #norm_cmp_value.append("arg_%d" % relate_arg)
-                            break
-                tmp_r_args = self.unique_list(r_args)
-                tmp_r_args.sort()
-                for tmp_arg in tmp_r_args:
-                    norm_cmp_value.append("arg_%d" % tmp_arg)
-
-                if len(r_args) == 0:
-                    # Because the Joern consides "NULL" as a Identifier, so it requires special handling.
-                    if child[2] == "NULL":
-                        norm_cmp_value.append("NULL")
-                    elif child[1] == "PrimaryExpression":
-                        norm_cmp_value.append(child[2])
-                    else:
-                        norm_cmp_value.append("Var")
-                        continue
-
-        return self.unique_list(norm_cmp_items), norm_cmp_value
-
-    def analysis_RelationalExpression(self, args_by_control, define_vars_of_args, index_arg, children_expr):
-        norm_cmp_items = []
-        norm_cmp_value = []
-
-        # child = [id, type, code]
-        flag_xchild_find = False
-        xchild_id = -1
-        for i in range(0, len(children_expr)):
-            child = children_expr[i]
-            # find which child contains the vars of the checked arg
-            if not flag_xchild_find:
-                for symbol in define_vars_of_args[index_arg]:
-                    if symbol in child[2]:
-                        flag_xchild_find = True
-                        xchild_id = child[0]
-                        norm_cmp_items.append(index_arg)
-                        break
-            # 判断该index_arg相关的child是否包括那些参数的符号变量，放入norm_cmp_items
-            if child[0] == xchild_id:
-                for relate_arg in args_by_control:
-                    for symbol_rarg in define_vars_of_args[relate_arg]:
-                        if symbol_rarg in child[2]:
-                            norm_cmp_items.append(relate_arg)
-                            break
-
-            # 判断该非index_arg相关的child是否包括那些参数的符号变量，放入norm_cmp_value
-            if child[0] != xchild_id:
-                r_args = []
-                for symbol in define_vars_of_args[index_arg]:
-                    if symbol in child[2]:
-                        r_args.append(index_arg)
-                        # norm_cmp_value.append("arg_%d" % index_arg)
-                        break
-                for relate_arg in args_by_control:
-                    for symbol_rarg in define_vars_of_args[relate_arg]:
-                        if symbol_rarg in child[2]:
-                            r_args.append(relate_arg)
-                            # norm_cmp_value.append("arg_%d" % relate_arg)
-                            break
-                tmp_r_args = self.unique_list(r_args)
-                tmp_r_args.sort()
-                for tmp_arg in tmp_r_args:
-                    norm_cmp_value.append("arg_%d" % tmp_arg)
-
-                if len(r_args) == 0:
-                    # Because the Joern consides "NULL" as a Identifier, so it requires special handling.
-                    if child[2] == "NULL":
-                        norm_cmp_value.append("NULL")
-                    elif child[1] == "PrimaryExpression":
-                        norm_cmp_value.append(child[2])
-                    else:
-                        norm_cmp_value.append("Var")
-                        continue
-        if xchild_id == 0:
-            flag_left_value = True
-        else:
-            flag_left_value = False
-        return self.unique_list(norm_cmp_items), norm_cmp_value, flag_left_value
-
-    def query_check_patterns_path_thread(self, callee_id, callsite_id, path, controls_path, result, index):
-        implicit_check_patterns, explicit_check_patterns = \
-            self.query_check_patterns_path(callee_id, callsite_id, path, controls_path)
-
-        result[index] = [implicit_check_patterns, explicit_check_patterns]
-        return result
-
     # 返回returnVar_code 或者 false
     def query_returnVar_of_callsite(self, callee_id):
         query = """
@@ -672,6 +254,7 @@ class ExtractErrFunFeatures:
         """ % (callee_id)
         returnVar = self.run_gremlin_query(query)
         return returnVar
+
     # 先判断当前位置是否为条件检查，是则返回当前节点，否则继续沿着CFG图继续搜索，返回checkpoint_id_of_var或者false
     def query_checkpoint_of_returnVar(self, callee_id, var):
         query = """
@@ -690,11 +273,15 @@ class ExtractErrFunFeatures:
         result = self.run_gremlin_query(query)
         return result
 
+    def run_no_thread(self, callee_ids):
+        print "错误：本程序的多线程版本尚未实现"
+        return False
+
     # feature_callee = [    callee_id, 未使用前检查（0,1）,
     #                       [正确路径的路径数量,正确路径的语句数量，错误路径中使用返回值变量(1,0)],
     #                       [错误路径的路径数量,正确路径的语句数量，错误路径中使用了返回值变量(1,0)]
     #                   ]
-    def run_no_thread(self, callee_ids):
+    def run_thread(self, callee_ids):
         feature_func = []
         feature_callee = []
         i = 0
@@ -738,7 +325,6 @@ class ExtractErrFunFeatures:
                 continue
             #
             #if(returnVar == False) and (checkpoint_id == False)):
-
 
             # 3. 存在未使用检查，继续分析路径信息
             feature_callee = [callee_id, 1]
