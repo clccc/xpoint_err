@@ -1,9 +1,9 @@
+# coding:utf-8
 # ---------------------------
 # 编码作者：cl
 # 更新时间：2019-12-05
 # 模块功能：为了调用便捷，封装Joern0.3.1中代码数据库链接功能，设定网络连接时限。
 # ---------------------------
-# coding:utf-8
 
 from joern.all import JoernSteps
 from py2neo.packages.httpstream import http
@@ -24,6 +24,15 @@ class DBContentsProvider:
         results = self.j.runGremlinQuery(query_script)
         return results
 
+    # 以下为用户的数据库查询过程
+
+    # 功能：从数据库中查询所有的被调用的函数名称
+    def query_allCallee_name(self):
+        query = """
+            g.V.has('type','Callee').as('x').code.dedup().back('x').code.toList()
+            """
+        result = self.run_gremlin_query(query)
+        return result
 
 if __name__ == '__main__':
     db_provider = DBContentsProvider()

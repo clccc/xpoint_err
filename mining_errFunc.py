@@ -2,13 +2,14 @@
 # -----------------------------
 # 编码作者：cl
 # 更新时间：2019-12-05
-# 模块功能：异常行为判定，即引入信息熵判定异常的行为向量。
+# 模块功能：根据提取的特征相关信息，构建特征，根据安全特征识别返回值敏感型函数，根据辅助特征评估函数优先级。
 # -----------------------------
 
 import math
 from ObjDataAndBinFile import ObjDataAndBinFile
 from display_data import DisplayEntropyInfo
 from database_provider import DBContentsProvider
+from config import *
 
 class MiningErrFunc:
 
@@ -16,18 +17,17 @@ class MiningErrFunc:
         self.db_provider = DBContentsProvider()
         self.calee_featureList = calee_featureList
         #关于路径数量，语句数量“明显差异”的阈值，比例 > thld_path_ratio
-        tmp_test = 2
-        self.thld_path_ratio = tmp_test
-        self.thld_stmt_ratio = tmp_test
+        self.thld_path_ratio = G_thld_path_ratio
+        self.thld_stmt_ratio = G_thld_stmt_ratio
         #关于特征是否满足的阈值
-        self.thld_is_check = 0.8
-        self.thld_is_path = 0.8
-        self.thld_is_stmt = 0.8
-        self.thld_is_useOneside = 0.8
+        self.thld_is_check = G_thld_is_check
+        self.thld_is_path = G_thld_is_path
+        self.thld_is_stmt = G_thld_is_stmt
+        self.thld_is_useOneside = G_thld_is_useOneside
         #关于个性特征的权重值
-        self.weight_path = 0.5
-        self.weight_stmt = 0.5
-        self.weight_useOneSide = 1
+        self.weight_path = G_weight_path
+        self.weight_stmt = G_weight_stmt
+        self.weight_useOneSide = G_weight_useOneSide
 
     def run_gremlin_query(self, query):
         return self.db_provider.run_gremlin_query(query)

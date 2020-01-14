@@ -2,13 +2,18 @@
 # -----------------------------
 # 编码作者：cl
 # 更新时间：2019-12-05
-# 模块功能：提取某函数各个调用实例的安全特征和辅助特征
+# 模块功能：提取某函数各个调用实例的安全特征和辅助特征的相关信息
+# 输入：函数名，或者实例id列表
+# 输出：特征信息feature_callee
+# feature_callee = [    callee_id, 未使用前检查（0,1）,
+#                       [正确路径的路径数量,正确路径的语句数量，正确路径中使用返回值变量(1,0)],
+#                       [错误路径的路径数量,错误路径的语句数量，错误路径中使用了返回值变量(1,0)]
+#                   ]
 # -----------------------------
 
 from threading import Thread
 from database_provider import DBContentsProvider
 from ObjDataAndBinFile import ObjDataAndBinFile
-
 
 class ExtractErrFunFeatures:
     def __init__(self, function_name):
@@ -60,7 +65,6 @@ class ExtractErrFunFeatures:
         """ % condition_id
         all_paths = self.run_gremlin_query(query)
         return all_paths
-
 
     # def_chain = src.id <--var_str-- dst.id
     def query_define_chains(self, path):
@@ -273,15 +277,15 @@ class ExtractErrFunFeatures:
         result = self.run_gremlin_query(query)
         return result
 
-    def run_no_thread(self, callee_ids):
+    def run_thread(self, callee_ids):
         print "错误：本程序的多线程版本尚未实现"
         return False
 
     # feature_callee = [    callee_id, 未使用前检查（0,1）,
-    #                       [正确路径的路径数量,正确路径的语句数量，错误路径中使用返回值变量(1,0)],
+    #                       [正确路径的路径数量,正确路径的语句数量，正确路径中使用返回值变量(1,0)],
     #                       [错误路径的路径数量,正确路径的语句数量，错误路径中使用了返回值变量(1,0)]
     #                   ]
-    def run_thread(self, callee_ids):
+    def run_no_thread(self, callee_ids):
         feature_func = []
         feature_callee = []
         i = 0
@@ -362,8 +366,7 @@ class ExtractErrFunFeatures:
                 flag_returnVar_used = 0
         return flag_returnVar_used
 
-
-    def run(self, flag_thread=True, *callee_from):
+    def run(self, flag_thread=False, *callee_from):
         if len(callee_from):
             if isinstance(callee_from[0], list):
                 callee_ids = callee_from[0]
