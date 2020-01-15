@@ -74,6 +74,9 @@ class MiningErrfuncShell:
         #mining_result = [callee_counts,is_err,
         # ratio_ft_check, ratio_ft_path,ratio_ft_stmt,ratio_ft_notusedTwoside]
         mining_result = obj_MiningErrFunc.run()
+        # 修正返回值函数判断,若存在检查比例，显然具有返回值。其余保持原结果
+        if mining_result[2] > 0:
+            flag_rvar_func = 1
         xp_tmp = []
         xp_tmp.append(flag_rvar_func)
         xp_tmp.append(function_name)
@@ -116,7 +119,7 @@ class MiningErrfuncShell:
         num_rvarFun = 0 # 返回值函数个数
         num_errFun = 0  # 返回值敏感型函数个数
         write_info(gl.G_result_path, "识别结果：")
-        write_info(gl.G_result_path, "函数名  is_err, weight_call, ratio_ft_path,"
+        write_info(gl.G_result_path, "函数名 counts, is_rVar, is_err, ratio_ft_path,"
                                      "ratio_ft_stmt,ratio_ft_usedOneside, is_rVarF")
         for xp_tmp in xpoint_reasult:
             infoSaved = "%s: %s %s %s %s %s %s %s"\

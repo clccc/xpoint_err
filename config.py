@@ -30,10 +30,10 @@ G_result_xls = "%s/%s"%(G_prjdata_dir,"report.xls")
 G_thld_path_ratio = 2.0
 G_thld_stmt_ratio = 2.0
 #关于特征是否满足的阈值
-G_thld_is_check = 0.8
-G_thld_is_path = 0.8
-G_thld_is_stmt = 0.8
-G_thld_is_notuseTwosides = 0.8
+G_thld_is_check = 0.7
+G_thld_is_path = 0.5
+G_thld_is_stmt = 0.5
+G_thld_is_notuseTwosides = 0.7
 #关于个性特征的危险系数，弃用优先级评估
 #G_weight_path = 0.5
 #G_weight_stmt = 0.5
