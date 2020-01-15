@@ -4,7 +4,10 @@
 # use Joern to extract err function (return-sensitive function)
 # -----------------------------
 
-# import sys
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 import os
 import argparse
 import datetime
@@ -12,7 +15,9 @@ from mining_errFunc import MiningErrFunc
 from extract_errFunc_feature import ExtractErrFunFeatures
 from database_provider import DBContentsProvider
 from ObjDataAndBinFile import ObjDataAndBinFile
-from config import *
+import config as gl
+from xutil import *
+from writeXLS import writeXLS
 import datetime
 
 # sys.path.append("..")
@@ -21,90 +26,120 @@ class MiningErrfuncShell:
 
     def __init__(self):
         self.db_provider = DBContentsProvider()
-        parser = argparse.ArgumentParser(description='识别源代码项目中的返回值敏感性函数')
+        parser = argparse.ArgumentParser(description='识别源代码项目中的返回值敏感型函数')
         parser.add_argument('-t', "--type", required=True, type=str, choices=["select","all"],
                             help='select:只对config.py中设置的函数进行识别\n all:对源代码项目中所有的函数进行识别')
-        #parser.add_argument("-t", "--threshold", required=False, type=int, default=0.5,
-        #                    help="the threshold of the entropy")
+        parser.add_argument("-prj", "--projectname", required=True, type=str,
+                            help="待识别函数所在的源代码项目，将以此建立同名数据文件夹")
         self.args = parser.parse_args()
+
+        gl.G_prjdata_dir = "%s/%s"%(gl.G_alldata_dir,self.args.projectname)
+        gl.G_result_path = "%s/%s"%(gl.G_prjdata_dir,"xp_err.txt")
+        gl.G_debuginfo_path = "%s/%s"%(gl.G_prjdata_dir,"degbug.txt")
+        gl.G_result_xls = "%s/%s"%(gl.G_prjdata_dir,"report.xls")
 
     def set_fuctions_bechecked(self):
         func_list = []
         if self.args.type == "all":
             func_list = self.db_provider.query_allCallee_name()
         elif self.args.type == "select":
-            func_list = G_func_list
-        # 删除列表中出现在G_func_unnormal中的异常函数，即Joern无法处理的函数
-        for item in G_func_unnormal:
+            func_list = gl.G_func_list
+        # 删除列表中出现在gl.G_func_unnormal中的异常函数，即Joern无法处理的函数
+        for item in gl.G_func_unnormal:
             if item in func_list:
                 func_list.remove(item)
         return func_list
 
-    def check_func(self,function_name):
-        function_name_str = function_name.encode('gbk')
-        #
-        datapath = G_feature_path+"/%s.data"%function_name_str
+    #result = [isVar funcname callee_counts,is_err,
+    # ratio_ft_check, ratio_ft_path,ratio_ft_stmt,ratio_ft_notusedTwoside]
+    def is_erFunc(self, function_name):
+        #function_name_str = function_name.encode('gbk')
+        #获取特征数据
+        savedinfo = "获取%s的特征数据\n"%function_name
+        write_info(gl.G_debuginfo_path,savedinfo)
+        datapath = gl.G_prjdata_dir + "/%s.data" % function_name
         if os.path.exists(datapath):
             #filename = "Data/42153.data"
-            feature_callees = ObjDataAndBinFile.binfile2objdata(datapath)
+            datatmp = ObjDataAndBinFile.binfile2objdata(datapath)
+            feature_callees = datatmp[0]
+            flag_rvar_func = datatmp[1]
         else:
-            extract_errfun_feature = ExtractErrFunFeatures(function_name_str)
+            extract_errfun_feature = ExtractErrFunFeatures(function_name)
             #patterns = extract_check_patterns.run(False, callee_ids)
-            feature_callees = extract_errfun_feature.run(flag_thread=False)
+            feature_callees,flag_rvar_func = extract_errfun_feature.run(flag_thread=False)
 
+        # 挖掘返回值敏感型函数
+        write_info(gl.G_debuginfo_path,"获取%s的识别结果\n"%function_name)
         obj_MiningErrFunc = MiningErrFunc(feature_callees)
-        #mining_result = [is_err, weight_call, ratio_ft_path,ratio_ft_stmt,ratio_ft_usedOneside]
+        #mining_result = [callee_counts,is_err,
+        # ratio_ft_check, ratio_ft_path,ratio_ft_stmt,ratio_ft_notusedTwoside]
         mining_result = obj_MiningErrFunc.run()
-        tmp = []
-        tmp.append(function_name)
-        tmp.extend(mining_result)
-        return tmp
+        xp_tmp = []
+        xp_tmp.append(flag_rvar_func)
+        xp_tmp.append(function_name)
+        xp_tmp.extend(mining_result)
+        #infoSaved = "%s %s %s %s %s %s %s"%(xp_tmp[1],xp_tmp[2],xp_tmp[3],xp_tmp[0],
+        #                                   xp_tmp[3],xp_tmp[4],xp_tmp[5],xp_tmp[6])
+        #infoSaved = str(xp_tmp[1]) + str("  ") + str(xp_tmp[2]) + "  " +  str(xp_tmp[0])\
+        #            + "  " +  str(xp_tmp[3])+ "  " +  str(xp_tmp[4])+ " "  + str(xp_tmp[5])
+        write_info(gl.G_debuginfo_path, xp_tmp)
+        return xp_tmp
 
-    def write_info(self, filepath, info):
-        f= open(filepath,'a' )
-        f.write(info)
-        f.close
-        return
 
     def run(self):
+        # 根据用户输入的项目名称，创建保存程序输出的文件夹
+        result = make_dir(gl.G_prjdata_dir)
+        write_info(gl.G_debuginfo_path, result)
+
         allCallee_name = self.set_fuctions_bechecked()
-        display_data = []
+        xpoint_reasult = []
         num_func = len(allCallee_name)
         num_alalysed_func = 0
-        infoSaved = "\nBeginTime = %s   num_func = %s\n"%(datetime.datetime.now(),num_func)
-        self.write_info(G_debug_path,infoSaved)
+        infoSaved = "\n# *%s* 中返回值敏感型函数识别：\n起始时间 = %s  待识别函数数量 = %s"\
+                    %(self.args.projectname, datetime.datetime.now(),num_func)
+        write_info(gl.G_result_path, infoSaved)
 
         for function_name in allCallee_name:
-            tmp = []
-            tmp = self.check_func(function_name)
-            display_data.append(tmp)
+            xp_tmp = []
+            # 识别function_name
+            #is_erFunc = [isVar funcname callee_counts,is_err,
+            # ratio_ft_check, ratio_ft_path,ratio_ft_stmt,ratio_ft_notusedTwoside]
+            xp_tmp = self.is_erFunc(function_name)
+            xpoint_reasult.append(xp_tmp)
             num_alalysed_func = num_alalysed_func +1
-            infoSaved = str(tmp[1]) + str("  ") + str(tmp[2]) + "  " +  str(tmp[0])
-                            + "  " +  str(tmp[3])+ "  " +  str(tmp[4])+ " "  + str(tmp[5])
-            self.write_info(G_debug_path,infoSaved)
+        infoSaved = "结束时间 = %s   已分析函数数量 = %s\n"\
+                    %(datetime.datetime.now(),num_alalysed_func)
+        write_info(gl.G_result_path, infoSaved)
 
-        infoSaved = "EndTime = %s   num_alalysed_func = %s\n"%(datetime.datetime.now(),num_alalysed_func)
-        self.write_info(G_debug_path,infoSaved)
-
-        display_data = sorted(display_data, key=lambda l: (l[1],l[2]), reverse=True)
-        # 保存数据
-        f= open("Data/10141859.txt",'w' )
-        #f= open("Data/%s.data"%int(time.time),'w' )
-        for data in display_data:
-            f.write(str(data[0]) + str("  ") + str(data[1]) + "  " +  str(data[2])
-                    + "  " +  str(data[3])+ "  " +  str(data[4]) + " " + str(data[5]))
-            f.write("\n")
-        f.close()
-
-
+        xpoint_reasult = sorted(xpoint_reasult, key=lambda l: (l[3],l[1]), reverse=True)
+        # 输出结果及统计数据
+        num_rvarFun = 0 # 返回值函数个数
+        num_errFun = 0  # 返回值敏感型函数个数
+        write_info(gl.G_result_path, "识别结果：")
+        write_info(gl.G_result_path, "函数名  is_err, weight_call, ratio_ft_path,"
+                                     "ratio_ft_stmt,ratio_ft_usedOneside, is_rVarF")
+        for xp_tmp in xpoint_reasult:
+            infoSaved = "%s: %s %s %s %s %s %s %s"\
+                        %(xp_tmp[1],xp_tmp[2],xp_tmp[0],
+                          xp_tmp[3],xp_tmp[4],xp_tmp[5],xp_tmp[6],xp_tmp[7])
+            write_info(gl.G_result_path, infoSaved)
+            if xp_tmp[0] == 1:
+                num_rvarFun = num_rvarFun +1
+            if xp_tmp[3] == 1:
+                num_errFun = num_errFun +1
+        infoSaved = "返回值函数个数=%s, 返回值敏感型函数个数=%s\n"%(num_rvarFun,num_errFun)
+        write_info(gl.G_result_path, infoSaved)
+        wXLS = writeXLS()
+        wXLS.write_excel(gl.G_result_xls, xpoint_reasult)
+        """
         ##debug：缺陷检测部分,检测前面num_detect个fun
         num_detect = 50
         index = 0
-        for func_item in display_data:
+        for func_item in xpoint_reasult:
             function_name_str = func_item[0].encode('gbk')
             extract_errfun_feature = ExtractErrFunFeatures(function_name_str)
             #patterns = extract_check_patterns.run(False, callee_ids)
-            feature_callees = extract_errfun_feature.run(flag_thread=False)
+            feature_callees,flag_rvar_func = extract_errfun_feature.run(flag_thread=False)
             for ft_callee in feature_callees:
                 ft_info = "%s %s %s %s %s %s %s %s"%(func_item[0],ft_callee[0],ft_callee[2][0],ft_callee[2][1],
                             ft_callee[2][2],ft_callee[3][0], ft_callee[3][1],ft_callee[3][2])
@@ -115,6 +150,7 @@ class MiningErrfuncShell:
             if index > num_func:
                 break
         ##
+        """
         return
 
 

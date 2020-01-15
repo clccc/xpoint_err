@@ -3,25 +3,29 @@
 # 模块功能：统一设置算法参数
 #-------------------------------
 
+
 # 待识别函数列表
-G_func_list = []
+G_func_list = ['atoi', 'der_cmp', 'file_err', 'add_mlist', 'snprintf']
 
 #一些奇怪的，暂时无法消除bug（与joern实现有关）的函数，不对此类函数进行处理，直接略过
 G_func_unnormal = ['INCOHERENT']
 
 # 待识别函数列表文件路径
+# todo
 G_func_path = ""
 
-# 保存识别过程中特征信息的文件路径
-# "Data/result_libtif407/%s.data"
-G_feature_path = ""
+# 保存所有项源代码项目的识别数据的文件夹
+G_alldata_dir = "Data"
 
-# 保存识别结果的文件位置,不带/
-G_result_locpath = ""
+# 保存单个具体源代码项目的识别结果的文件夹，*此处自动生成，无需修改*
+G_prjdata_dir = ""
+# 保存识别结果的文件路径,*此处自动生成，无需修改*
+G_result_path = "%s/%s"%(G_prjdata_dir,"xp_err.txt")
+# 保存中间调试信息的文件路径，*此处自动生成，无需修改*
+G_debuginfo_path = "%s/%s"%(G_prjdata_dir,"degbug.txt")
+G_result_xls = "%s/%s"%(G_prjdata_dir,"report.xls")
 
-# 保存中间调试信息的文件路径
-G_debug_path = "Data/degbug.txt"
-
+#以下为本算法的参数设定
 #关于路径数量，语句数量“明显差异”的阈值，比例 > thld_path_ratio
 G_thld_path_ratio = 2.0
 G_thld_stmt_ratio = 2.0
@@ -29,8 +33,8 @@ G_thld_stmt_ratio = 2.0
 G_thld_is_check = 0.8
 G_thld_is_path = 0.8
 G_thld_is_stmt = 0.8
-G_thld_is_useOneside = 0.8
-#关于个性特征的权重值
-G_weight_path = 0.5
-G_weight_stmt = 0.5
-G_weight_useOneSide = 1
+G_thld_is_notuseTwosides = 0.8
+#关于个性特征的危险系数，弃用优先级评估
+#G_weight_path = 0.5
+#G_weight_stmt = 0.5
+#G_weight_useOneSide = 1

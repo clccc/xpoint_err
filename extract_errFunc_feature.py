@@ -14,6 +14,8 @@
 from threading import Thread
 from database_provider import DBContentsProvider
 from ObjDataAndBinFile import ObjDataAndBinFile
+import config as gl
+from xutil import *
 
 class ExtractErrFunFeatures:
     def __init__(self, function_name):
@@ -59,6 +61,7 @@ class ExtractErrFunFeatures:
         all_paths = self.run_gremlin_query(query)
         return all_paths
 
+    #返回两条路径，前者为条件为true的分支，后者为false的分支
     def query_farward_paths_from_condition(self, condition_id):
         query = """
         getFarwardPaths_from_condition(%s)
@@ -288,9 +291,13 @@ class ExtractErrFunFeatures:
     def run_no_thread(self, callee_ids):
         feature_func = []
         feature_callee = []
+        # 临时增加，只为统计实例是否有返回值，从而确定该函数是否为返回值函数
+        rVar_func = []
+        falg_rvar_func = 0
         i = 0
         # -test
-        print "len(callee_ids) = %d " % (len(callee_ids))
+        savedinfo = "len(callee_ids) = %d " % (len(callee_ids))
+        write_info(gl.G_debuginfo_path,savedinfo)
         # -test
         for callee_id in callee_ids:
             feature_callee = [callee_id, 0, [0,0,0],[0,0,0]]
@@ -301,8 +308,9 @@ class ExtractErrFunFeatures:
             # get callsite_id = cfgnodid of callee_id
             callsite_id = self.query_callsite_id(callee_id)
             # -test
-            print "%3d.%10d%10d "%(i, callee_id, callsite_id)
-            # -test
+            savedinfo = "%3d.%10d%10d "%(i, callee_id, callsite_id)
+            write_info(gl.G_debuginfo_path,savedinfo)
+            # -testExtractErrFunFeatures
 
             # get controls control the callsite_id
             #all_controls = self.query_controls(callsite_id)
@@ -315,14 +323,16 @@ class ExtractErrFunFeatures:
                 var_code = "Err"
             else:
             # 遇到b->buf类似的例子时候，会返回多个变量。此仅仅考虑了第一个symbol
-            # b->buf，会分为b，bug两个变量，需后续改进
+            # b->buf，会分为b，buf两个变量，需后续改进
+                falg_rvar_func = 1
                 if isinstance(returnVar, list):
                     var_code = returnVar[0]
                 else:
                     var_code = returnVar
             checkpoint_id = 0
             checkpoint_id = self.query_checkpoint_of_returnVar(callee_id,var_code)
-            print "%s : \t %s %s" %(self.query_loc_callsite(callee_id),checkpoint_id,returnVar)
+            savedinfo =  "%s : \t %s %s" %(self.query_loc_callsite(callee_id),checkpoint_id,returnVar)
+            write_info(gl.G_debuginfo_path, savedinfo)
             if not checkpoint_id:
                 feature_callee = [callee_id, 0, [0,0,0],[0,0,0]]
                 feature_func.append(feature_callee)
@@ -332,14 +342,15 @@ class ExtractErrFunFeatures:
 
             # 3. 存在未使用检查，继续分析路径信息
             feature_callee = [callee_id, 1]
+
+            #all_paths为2个分量的list，1为ture分支，2为false分支
             all_paths = self.query_farward_paths_from_condition(checkpoint_id)
+            write_info(gl.G_debuginfo_path,all_paths)
             #todo: switch未处理，导致all_paths =  false
             if not all_paths:
                 feature_callee = [callee_id, 1, [0,0,0],[0,0,0]]
                 feature_func.append(feature_callee)
                 continue
-
-            print all_paths
             for path in all_paths:
                 feature_right_path = [0,0,0]
                 if path:
@@ -352,7 +363,7 @@ class ExtractErrFunFeatures:
                     feature_right_path = [num_lpaths, num_lstatements, flag_returnVar_used]
                 feature_callee.append(feature_right_path)
             feature_func.append(feature_callee)
-        return feature_func
+        return feature_func,falg_rvar_func
 
     def is_var_usedin_path(self, lpath, returnVar):
         flag_returnVar_used = 0
@@ -370,26 +381,46 @@ class ExtractErrFunFeatures:
         if len(callee_from):
             if isinstance(callee_from[0], list):
                 callee_ids = callee_from[0]
-                filepath = "Data/%s.data" % callee_ids[0]
+                filepath = "%s/%s.data" % (gl.G_prjdata_dir, callee_ids[0])
         else:
             callee_ids = self.query_callee_ids(self.function_name)
-            filepath = "Data/%s.data" % self.function_name
+            filepath = "%s/%s.data" % (gl.G_prjdata_dir, self.function_name)
+
+        savedinfo = "extract_errFunc_feature:启动\n"
+        write_info(gl.G_debuginfo_path,savedinfo)
 
         if flag_thread:
             feature_func = self.run_thread(callee_ids)
         else:
-            feature_func = self.run_no_thread(callee_ids)
+            feature_func,flag_rvar_func = self.run_no_thread(callee_ids)
+        savedinfo = "extract_errFunc_feature:保存数据到%s\n"%filepath
+        write_info(gl.G_debuginfo_path,savedinfo)
+        datatmp = [feature_func,flag_rvar_func]
+        ObjDataAndBinFile.objdata2file(datatmp, filepath)
+        # feature_callee = [    callee_id, 未使用前检查（0,1）,
+        #                       [正确路径的路径数量,正确路径的语句数量，正确路径中使用返回值变量(1,0)],
+        #                       [错误路径的路径数量,正确路径的语句数量，错误路径中使用了返回值变量(1,0)]
+        #                   ]
+        write_info(gl.G_debuginfo_path,"extract_errFunc_feature:各实例的特征提取结果如下")
+        savedinfo = "feature_callee = [\n" \
+                    "\tcallee_id, \n" \
+                    "\t未使用前检查（0,1）,\n" \
+                    "\t[正确路径的路径数量,正确路径的语句数量，正确路径中使用返回值变量(1,0)],\n" \
+                    "\t[错误路径的路径数量,正确路径的语句数量，错误路径中使用了返回值变量(1,0)],\n" \
+                    "]\n"
+        write_info(gl.G_debuginfo_path,savedinfo)
 
-        print "feature_func =： "
+
         #print check_patterns
         # display chek_patterns
+        write_info(gl.G_debuginfo_path,"feature_callees = \n")
         for pattern in feature_func:
             loc = self.query_loc_callsite(pattern[0])
-            print "%s:" % (loc)
-            print pattern
+            savedinfo = "%s:" % (loc)
+            write_info(gl.G_debuginfo_path,savedinfo)
 
-        ObjDataAndBinFile.objdata2file(feature_func, filepath)
-        return feature_func
+            write_info(gl.G_debuginfo_path,pattern)
+        return feature_func,flag_rvar_func
 
 
 if __name__ == '__main__':

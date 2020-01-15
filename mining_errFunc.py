@@ -23,11 +23,11 @@ class MiningErrFunc:
         self.thld_is_check = G_thld_is_check
         self.thld_is_path = G_thld_is_path
         self.thld_is_stmt = G_thld_is_stmt
-        self.thld_is_useOneside = G_thld_is_useOneside
+        self.thld_is_notuseTwosides = G_thld_is_notuseTwosides
         #关于个性特征的权重值
-        self.weight_path = G_weight_path
-        self.weight_stmt = G_weight_stmt
-        self.weight_useOneSide = G_weight_useOneSide
+        #self.weight_path = G_weight_path
+        #self.weight_stmt = G_weight_stmt
+        #self.weight_useOneSide = G_weight_useOneSide
 
     def run_gremlin_query(self, query):
         return self.db_provider.run_gremlin_query(query)
@@ -43,38 +43,48 @@ class MiningErrFunc:
     #                       [正确路径的路径数量,正确路径的语句数量，错误路径中使用返回值变量(1,0)],
     #                       [错误路径的路径数量,正确路径的语句数量，错误路径中使用了返回值变量(1,0)]
     #                   ]
+    # 正确路径：true边的路径；错误路径：false边的路径
     def get_featrue(self,featureList):
         ft_call = []
         for feature in featureList:
-            if(feature[2][1] > feature[3][1]):
-                if(feature[2][0] != 0 and feature[3][0] == 0):
+            callee_id = feature[0]
+            var_ischecked = feature[1]
+            tpath_paths_count = feature[2][0]
+            fpath_paths_count = feature[3][0]
+            tpath_stmts_count = feature[2][1]
+            fpath_stmts_count = feature[3][1]
+            tpath_rvar_isused = feature[2][2]
+            fpath_rvar_isused = feature[3][2]
+
+            if(tpath_stmts_count > fpath_stmts_count):
+                if(tpath_paths_count != 0 and fpath_paths_count == 0):
                     path_ratio = 999
-                if(feature[2][0] == 0 and feature[3][0] == 0):
+                if(tpath_paths_count == 0 and fpath_paths_count == 0):
                     path_ratio = 0
 
-                if(feature[2][1] != 0 and feature[3][1] == 0):
+                if(tpath_stmts_count != 0 and fpath_stmts_count == 0):
                     stmt_ratio = 999
-                if(feature[2][1] == 0 and feature[3][1] == 0):
+                if(tpath_stmts_count == 0 and fpath_stmts_count == 0):
                     stmt_ratio = 0
 
-                if(feature[3][0] != 0):
-                    path_ratio = round(float(feature[2][0])/feature[3][0],2)
-                if(feature[3][1] != 0):
-                    stmt_ratio = round(float(feature[2][1])/feature[3][1],2)
+                if(fpath_paths_count != 0):
+                    path_ratio = round(float(tpath_paths_count)/fpath_paths_count,2)
+                if(fpath_stmts_count != 0):
+                    stmt_ratio = round(float(tpath_stmts_count)/fpath_stmts_count,2)
             else:
-                if(feature[3][0] != 0 and feature[2][0] == 0):
+                if(fpath_paths_count != 0 and tpath_paths_count == 0):
                     path_ratio = 999
-                if(feature[3][0] == 0 and feature[2][0] == 0):
+                if(fpath_paths_count == 0 and tpath_paths_count == 0):
                     path_ratio = 0
 
-                if(feature[3][1] != 0 and feature[2][1] == 0):
+                if(fpath_stmts_count != 0 and tpath_stmts_count == 0):
                     stmt_ratio = 999
-                if(feature[3][1] == 0 and feature[2][1] == 0):
+                if(fpath_stmts_count == 0 and tpath_stmts_count == 0):
                     stmt_ratio = 0
-                if(feature[2][0] != 0):
-                    path_ratio = round(float(feature[3][0])/feature[2][0],2)
-                if(feature[2][1] != 0):
-                    stmt_ratio = round(float(feature[3][1])/feature[2][1],2)
+                if(tpath_paths_count != 0):
+                    path_ratio = round(float(fpath_paths_count)/tpath_paths_count,2)
+                if(tpath_stmts_count != 0):
+                    stmt_ratio = round(float(fpath_stmts_count)/tpath_stmts_count,2)
             if path_ratio >= self.thld_path_ratio:
                 ft_path = 1
             else:
@@ -84,43 +94,49 @@ class MiningErrFunc:
             else:
                 ft_stmt = 0
 
-            if((feature[2][2] == 1 and feature[3][2] == 0) or (feature[2][2] == 0 and feature[3][2] == 1)):
-                ft_used_oneside = 1
-            else:
+            if tpath_rvar_isused == 1 and fpath_rvar_isused == 1:
                 ft_used_oneside = 0
-            ft_call.append([feature[0],feature[1],ft_path,ft_stmt,ft_used_oneside])
+            else:
+                ft_used_oneside = 1
+            ft_call.append([callee_id,var_ischecked,ft_path,ft_stmt,ft_used_oneside])
         return ft_call
 
     def mining_err(self, ft_call):
-        num = len(ft_call)
+        callee_counts = len(ft_call)
         count_ft_check = 0
         count_ft_path  = 0
         count_ft_stmt = 0
-        count_ft_usedOneside = 0
+        count_ft_notusedTwoside = 0
         for ft in ft_call:
             count_ft_check = count_ft_check + ft[1]
             count_ft_path = count_ft_path + ft[2]
             count_ft_stmt = count_ft_stmt + ft[3]
-            count_ft_usedOneside = count_ft_usedOneside + ft[4]
-        ratio_ft_check = round(float(count_ft_check)/num,2)
-        ratio_ft_path  = round(float(count_ft_path)/num,2)
-        ratio_ft_stmt = round(float(count_ft_stmt)/num,2)
-        ratio_ft_usedOneside = round(float(count_ft_usedOneside)/num,2)
+            count_ft_notusedTwoside = count_ft_notusedTwoside + ft[4]
+        ratio_ft_check = round(float(count_ft_check)/callee_counts,2)
+        ratio_ft_path  = round(float(count_ft_path)/callee_counts,2)
+        ratio_ft_stmt = round(float(count_ft_stmt)/callee_counts,2)
+        ratio_ft_notusedTwoside = round(float(count_ft_notusedTwoside)/callee_counts,2)
 
         #挖掘策略
         weight_call = 0
-        if(ratio_ft_check > self.thld_is_check):
+        if((ratio_ft_check > self.thld_is_check) and
+                (ratio_ft_path > self.thld_is_path) and
+                (ratio_ft_stmt > self.thld_is_stmt) and
+                (ratio_ft_notusedTwoside > self.thld_is_notuseTwosides)):
             is_err = 1
         else:
             is_err = 0
 
+        # 此处不再优先级评估
+        """
         if(ratio_ft_path >= self.thld_is_path):
             weight_call = weight_call + self.weight_path
         if(ratio_ft_stmt >= self.thld_is_stmt):
             weight_call = weight_call + self.weight_stmt
-        if(ratio_ft_usedOneside >= self.thld_is_useOneside):
+        if(ratio_ft_notusedTwoside >= self.thld_is_notuseTwosides):
             weight_call = weight_call + self.weight_useOneSide
-        mining_result = [is_err, weight_call, ratio_ft_path,ratio_ft_stmt,ratio_ft_usedOneside]
+        """
+        mining_result = [callee_counts, is_err, ratio_ft_check, ratio_ft_path,ratio_ft_stmt,ratio_ft_notusedTwoside]
         return mining_result
         #display
 
@@ -166,7 +182,7 @@ if __name__ == '__main__':
 
     filename = "Data/alloc_workqueue.data"
     #filename = "Data/42153.data"
-    featureList = ObjDataAndBinFile.binfile2objdata(filename)
+    featureList,flag_rvar_func = ObjDataAndBinFile.binfile2objdata(filename)
     obj_MiningErrFunc = MiningErrFunc(featureList)
     featurecallee = obj_MiningErrFunc.run()
 
