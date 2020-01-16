@@ -144,6 +144,7 @@ class MiningErrFunc:
         ft_call = self.get_featrue(self.calee_featureList)
         mining_result = self.mining_err(ft_call)
         # 打印挖掘结果
+        """
         f = open("Data/result.txt","w")
         print >> f, "ft_call = "
         print >> f,mining_result
@@ -154,7 +155,7 @@ class MiningErrFunc:
             print >> f,self.calee_featureList[i]
             print self.calee_featureList[i]
             print >> f,ft_call[i]
-
+        """
         return mining_result
 
     """

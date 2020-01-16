@@ -18,9 +18,9 @@ Object.metaClass.parseControl= { control, nextCfgId ->
     } catch(Exception ex) {
         //Catch block
 
-        println "parseControl failed: " + ex
-        println control
-        println nextCfgId
+        //- println "parseControl failed: " + ex
+        //- println control
+        //- println nextCfgId
     }
 
 }
@@ -29,18 +29,18 @@ Object.metaClass.parseControl= { control, nextCfgId ->
 Object.metaClass._getFlowlabelOfCfgIds= { id_first, id_next ->
     try {
         edge = g.v(id_first).outE('FLOWS_TO').id.toList()
-        // println edge.size()
+        // //- println edge.size()
         for (i = 0; i < edge.size(); i++) {
             if (g.e(edge[i]).inV.id._().toList()[0] == id_next) {
-                // println g.e(edge[i]).flowLabel
+                // //- println g.e(edge[i]).flowLabel
                 return g.e(edge[i]).flowLabel
             }
         }
         return 'Not found'
     } catch(Exception ex) {
-        println "_getFlowlabelOfCfgIds failed: " + ex
-        println id_first
-        println id_next
+        //- println "_getFlowlabelOfCfgIds failed: " + ex
+        //- println id_first
+        //- println id_next
     }
 }
 

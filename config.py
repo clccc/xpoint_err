@@ -8,7 +8,7 @@
 G_func_list = ['atoi', 'der_cmp', 'file_err', 'add_mlist', 'snprintf']
 
 #一些奇怪的，暂时无法消除bug（与joern实现有关）的函数，不对此类函数进行处理，直接略过
-G_func_unnormal = ['INCOHERENT']
+G_func_unnormal = ['INCOHERENT','av_log','AVERROR','av_assert0','FFMIN','assert','RAND_pseudo_bytes','BN_rand_range','ECDSAerr']
 
 # 待识别函数列表文件路径
 # todo

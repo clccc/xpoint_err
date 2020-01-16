@@ -102,7 +102,10 @@ class MiningErrfuncShell:
                     %(self.args.projectname, datetime.datetime.now(),num_func)
         write_info(gl.G_result_path, infoSaved)
 
+        tmp_index = 0
         for function_name in allCallee_name:
+            print "%d 识别%s\n"%(tmp_index,function_name)
+            tmp_index = tmp_index + 1
             xp_tmp = []
             # 识别function_name
             #is_erFunc = [isVar funcname callee_counts,is_err,
