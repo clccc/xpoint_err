@@ -17,6 +17,9 @@ class DisplayEntropyInfo:
     def run_gremlin_query(self, query):
         return self.db_provider.run_gremlin_query(query)
 
+    def run_gremlin_query(self, query):
+        return self.db_provider.run_gremlin_query(query)
+
     def query_loc_callsite(self, callee_id):
         query = """
             g.v(%s).statements.transform{[g.v(it.functionId).functionToFile.filepath, it.location]}

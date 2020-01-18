@@ -6,6 +6,7 @@
 # -----------------------------
 
 import os
+import math
 
 def write_info(filepath, savedinfo):
     f= open(filepath,'a')
@@ -22,3 +23,9 @@ def make_dir(dir):
     else:
         result = "检测%s已经存在"%dir
     return result
+
+def calculate_entropy(p, counts):
+    h = 0
+    h += p * math.log(p, 2)
+    h = -h/math.log(counts, 10)
+    return round(h, 2)
